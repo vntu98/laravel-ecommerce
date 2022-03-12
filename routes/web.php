@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ProductShowController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,9 +15,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', HomeController::class);
+
+Route::get('/products/{product:slug}', ProductShowController::class);
 
 Route::get('/dashboard', function () {
     return view('dashboard');
