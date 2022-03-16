@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Spatie\Image\Manipulations;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -61,5 +62,21 @@ class Variation extends Model implements HasMedia
     {
         $this->addMediaCollection('default')
             ->useFallbackUrl(url('/storage/no-product.png'));
+    }
+
+    public static function getTypes($products)
+    {
+        return DB::query()
+            ->selectRaw(
+                <<<SQL
+                    type, title, count(*)
+                SQL
+            )->from('variations')
+            ->whereIn('product_id', $products->pluck('id')->toArray())
+            ->groupBy('type', 'title')
+            ->get()
+            ->mapToGroups(function ($item) {
+                return [$item->type => ['name' => $item->title, 'count' => $item->count]];
+            });
     }
 }

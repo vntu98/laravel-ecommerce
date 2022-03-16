@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\LiveScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Laravel\Scout\Searchable;
 use Spatie\Image\Manipulations;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -13,6 +16,11 @@ class Product extends Model implements HasMedia
 {
     use HasFactory;
     use InteractsWithMedia;
+
+    public static function booted()
+    {
+        static::addGlobalScope(new LiveScope());
+    }
 
     public function formattedPrice()
     {
@@ -34,5 +42,37 @@ class Product extends Model implements HasMedia
     {
         $this->addMediaCollection('default')
             ->useFallbackUrl(url('/storage/no-product.png'));
+    }
+
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class);
+    }
+
+    public static function applyFilters($products, $query)
+    {
+        $products = DB::query()
+            ->selectRaw(
+                <<<SQL
+                    p.*
+                SQL
+            )->fromRaw(
+                <<<SQL
+                    products p
+                    join variations v on v.product_id = p.id
+                SQL
+            )->whereRaw(
+                <<<SQL
+                    $query
+                SQL
+            )->whereIn('p.id', $products->pluck('id')->toArray())
+            ->get();
+
+        return self::query()->whereIn('id', $products->pluck('id')->toArray())->get();
+    }
+
+    public static function search($search)
+    {
+        return self::query()->whereRaw("LOWER(title) like '%" . strtolower($search) . "%'" );
     }
 }
