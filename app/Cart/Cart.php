@@ -3,9 +3,11 @@
 namespace App\Cart;
 
 use App\Cart\Contracts\CartInterface;
+use App\Cart\Exceptions\QuantityNoLongerAvailable;
 use App\Models\Cart as ModelsCart;
 use App\Models\User;
 use App\Models\Variation;
+use Exception;
 use Illuminate\Session\SessionManager;
 
 class Cart implements CartInterface
@@ -55,6 +57,11 @@ class Cart implements CartInterface
         return money($this->subtotal());
     }
 
+    protected function clearInstanceCache()
+    {
+        $this->instance = null;
+    }
+
     protected function instance()
     {
         if ($this->instance) {
@@ -95,6 +102,37 @@ class Cart implements CartInterface
     public function isEmpty()
     {
         return $this->contents()->count() === 0;
+    }
+
+    public function verifyAvailableQuantities()
+    {
+        $this->instance()->variations->each(function ($variation) {
+            if ($variation->pivot->quantity > $variation->stocks->sum('amount')) {
+                throw new QuantityNoLongerAvailable('Stock reduced');
+            }
+        });
+    }
+
+    public function syncAvailableQuantities()
+    {
+        $syncedQuantities = $this->instance()->variations->mapWithKeys(function ($variation) {
+            $quantity = $variation->pivot->quantity > $variation->stocks->sum('amount')
+                ? $variation->stockCount()
+                : $variation->pivot->quantity;
+
+            return [
+                $variation->id => [
+                    'quantity' => $quantity
+                ]
+            ];
+        })
+        ->reject(function ($syncedQuantity) {
+            return $syncedQuantity['quantity'] === 0;
+        });
+
+        $this->instance()->variations()->sync($syncedQuantities);
+
+        $this->clearInstanceCache();
     }
 
     public function getVariation(Variation $variation)
