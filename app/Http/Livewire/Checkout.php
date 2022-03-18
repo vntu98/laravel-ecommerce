@@ -3,6 +3,7 @@
 namespace App\Http\Livewire;
 
 use App\Cart\Contracts\CartInterface;
+use App\Models\Order;
 use App\Models\ShippingAddress;
 use App\Models\ShippingType;
 use Livewire\Component;
@@ -65,14 +66,50 @@ class Checkout extends Component
         return auth()->user()?->shippingAddresses;
     }
 
-    public function checkout()
+    public function checkout(CartInterface $cart)
     {
         $this->validate();
 
-        ($this->shippingAddress = ShippingAddress::whereBelongsTo(auth()->user())->firstOrcreate($this->shippingForm))
+        $this->shippingAddress = ShippingAddress::query();
+
+        if (auth()->user()) {
+            $this->shippingAddress = $this->shippingAddress->whereBelongsTo(auth()->user());
+        }
+
+        ($this->shippingAddress = $this->shippingAddress->firstOrcreate($this->shippingForm))
             ?->user()
             ->associate(auth()->user())
             ->save();
+
+        $order = Order::make(array_merge($this->accountForm, [
+            'subtotal' => $cart->subtotal()
+        ]));
+
+        $order->user()->associate(auth()->user());
+
+        $order->shippingType()->associate($this->shippingType);
+
+        $order->shippingAddress()->associate($this->shippingAddress);
+
+        $order->save();
+
+        $order->variations()->attach(
+            $cart->contents()->mapWithKeys(function ($variation) {
+                return [
+                    $variation->id => [
+                        'quantity' => $variation->pivot->quantity
+                    ]
+                ];
+            })
+        );
+
+        $cart->contents()->each(function ($variation) {
+            $variation->stocks()->create([
+                'amount' => 0 - $variation->pivot->quantity
+            ]);
+        });
+
+        $cart->removeAll();
     }
 
     public function mount()
