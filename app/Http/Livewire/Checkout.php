@@ -110,6 +110,12 @@ class Checkout extends Component
         });
 
         $cart->removeAll();
+
+        if (!auth()->user()) {
+            return redirect()->route('order.confirmation', $order->uuid);
+        }
+
+        return redirect()->route('orders');
     }
 
     public function mount()
