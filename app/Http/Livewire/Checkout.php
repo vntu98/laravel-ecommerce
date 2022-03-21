@@ -3,9 +3,11 @@
 namespace App\Http\Livewire;
 
 use App\Cart\Contracts\CartInterface;
+use App\Mail\OrderCreated;
 use App\Models\Order;
 use App\Models\ShippingAddress;
 use App\Models\ShippingType;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
 
 class Checkout extends Component
@@ -110,6 +112,8 @@ class Checkout extends Component
         });
 
         $cart->removeAll();
+
+        Mail::to($order->user)->send(new OrderCreated($order));
 
         if (!auth()->user()) {
             return redirect()->route('order.confirmation', $order->uuid);

@@ -24,6 +24,18 @@ class Order extends Model
         'shipped_at'
     ];
 
+    protected $casts = [
+        'placed_at' => 'datetime',
+        'packaged_at' => 'datetime',
+        'shipped_at' => 'datetime'
+    ];
+
+    public $statuses = [
+        'placed_at',
+        'packaged_at',
+        'shipped_at'
+    ];
+
     public static function booted()
     {
         static::creating(function (Order $order) {
@@ -44,7 +56,7 @@ class Order extends Model
 
     public function shippingAddress()
     {
-        return $this->belongsTo(ShippingType::class);
+        return $this->belongsTo(ShippingAddress::class);
     }
 
     public function variations()
@@ -52,5 +64,11 @@ class Order extends Model
         return $this->belongsToMany(Variation::class)
             ->withPivot(['quantity'])
             ->withTimestamps();
+    }
+
+    public function status()
+    {
+        return collect($this->statuses)
+            ->last(fn ($status) => filled($this->{$status}));
     }
 }
