@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Presenters\OrderPresenter;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -70,5 +71,10 @@ class Order extends Model
     {
         return collect($this->statuses)
             ->last(fn ($status) => filled($this->{$status}));
+    }
+
+    public function presenter()
+    {
+        return new OrderPresenter($this);
     }
 }

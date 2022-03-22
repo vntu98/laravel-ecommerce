@@ -18,7 +18,19 @@ class Cart implements CartInterface
 
     public function exists()
     {
-        return $this->session->has(config('cart.session.key'));
+        return $this->session->has(config('cart.session.key')) && $this->instance();
+    }
+
+    public function destroy()
+    {
+        $this->session->forget(config('cart.session.key'));
+        $this->instance()->delete();
+    }
+
+    public function associate(User $user)
+    {
+        $this->instance()->user()->associate($user);
+        $this->instance()->save();
     }
 
     public function create(?User $user = null)

@@ -115,6 +115,8 @@ class Checkout extends Component
 
         Mail::to($order->user)->send(new OrderCreated($order));
 
+        $cart->destroy();
+
         if (!auth()->user()) {
             return redirect()->route('order.confirmation', $order->uuid);
         }
